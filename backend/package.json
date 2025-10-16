@@ -1,0 +1,48 @@
+{
+  "name": "feedo-backend",
+  "version": "1.0.0",
+  "description": "Feedo Fund Backend Service",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "create-token": "tsx src/scripts/createToken.ts",
+    "set-token-meta": "tsx src/scripts/setTokenMetadata.ts",
+    "transfer-tokens": "tsx src/scripts/transferTokens.ts",
+    "update-wallets": "tsx src/scripts/updateWallets.ts",
+    "cleanup-db": "tsx src/scripts/cleanupDatabase.ts",
+    "check-account": "tsx src/scripts/checkAccount.ts",
+    "check-token-account": "tsx src/scripts/checkTokenAccount.ts",
+    "create-token-accounts": "tsx src/scripts/createTokenAccounts.ts",
+    "mock-test": "tsx src/scripts/mockTest.ts",
+    "create-token-accounts-helius": "tsx src/scripts/createTokenAccountsHelius.ts",
+    "debug-threshold": "tsx src/scripts/debugThreshold.ts",
+    "test-threshold-only": "tsx src/scripts/testThresholdOnly.ts",
+    "check-failed-records": "tsx src/scripts/checkFailedRecords.ts",
+    "check-all-records": "tsx src/scripts/checkAllRecords.ts",
+    "test-swap-direct": "tsx src/scripts/testSwapDirect.ts"
+  },
+  "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@prisma/client": "^6.17.1",
+    "@solana/spl-token": "^0.3.9",
+    "@solana/web3.js": "^1.87.6",
+    "bs58": "^5.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3",
+    "p-retry": "^6.2.1",
+    "prisma": "^6.17.1",
+    "undici": "^6.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.5",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3"
+  }
+}

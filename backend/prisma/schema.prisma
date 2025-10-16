@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  name      String
+  address   String   @unique
+  type      String   // "treasury", "target", "donation"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  balances  Balance[]
+}
+
+model Balance {
+  id        String   @id @default(cuid())
+  walletId  String
+  mint      String // "SOL" for native
+  amountRaw String  // Store as string for BigInt
+  amountUi  Float
+  usdValue  Float
+  updatedAt DateTime @updatedAt
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model Donation {
+  id           String   @id @default(cuid())
+  txSig        String   @unique
+  fromAddress  String
+  toAddress    String
+  amountSol    Float
+  usdValue     Float
+  createdAt    DateTime @default(now())
+  note         String?
+}
+
+model Metric {
+  id                    String   @id @default(cuid())
+  lastDonationTimestamp DateTime?
+  lastSwapTimestamp     DateTime?
+  cumulativeDonations   Float    @default(0)
+}
+
+model TxRecord {
+  id          String   @id @default(cuid())
+  kind        String   // "monthly_transfer", "swap", "donation"
+  txSig       String   @unique
+  status      String   // "success", "failed", "pending_retry"
+  createdAt   DateTime @default(now())
+  amountUi    Float?
+  fromAddress String?
+  toAddress   String?
+  details     String?  // Store as JSON string
+}
+
+model RetryTask {
+  id        String   @id @default(cuid())
+  taskType  String
+  payload   String   // Store as JSON string
+  attempts  Int      @default(0)
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

@@ -1,0 +1,13 @@
+{
+  "name": "feedo-fund",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "build": "echo build root",
+    "dev": "echo dev root"
+  }
+}

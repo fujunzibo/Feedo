@@ -1,0 +1,11 @@
+{
+    "name": "Feedo",
+    "symbol": "FEEDO",
+    "description": "Feedo on Solana Devnet",
+    "image": "001.svg",
+    "attributes": [],
+    "extensions": {
+      "website": "https://your.site",
+      "twitter": "https://twitter.com/your_handle"
+    }
+  }

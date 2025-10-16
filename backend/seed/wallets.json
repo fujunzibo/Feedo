@@ -1,0 +1,19 @@
+[
+  {
+    "name": "Treasury",
+    "address": "262BQdidY9u7EzmEAXX8MgxfNePkiZqC22W7cKyBdJAJ",
+    "type": "treasury"
+  },
+  {
+    "name": "Target",
+    "address": "9vTLjdjqMAH3XwadQVmy9428D2rjcM4zYx5yMi23yUSp",
+    "type": "target"
+  },
+  {
+    "name": "Donation",
+    "address": "2LxuJVbvHfkoq8ChsDnUBG4m1C6TGdcWYpojUqUREQSo",
+    "type": "donation"
+  }
+]
+
+
