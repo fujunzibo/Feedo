@@ -18,19 +18,36 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Dashboard data route
-app.get('/api/dashboard', async (_req, res) => {
+app.get('/api/dashboard', async (req, res) => {
   try {
     const wallets = await prisma.wallet.findMany();
+    
+    // 支持分页参数
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 500; // 默认显示500条记录
+    const skip = (page - 1) * limit;
+    
     const txRecords = await prisma.txRecord.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      skip: skip,
+      take: limit,
     });
+    
+    // 获取总记录数用于分页
+    const totalRecords = await prisma.txRecord.count();
+    
     const metrics = await prisma.metric.findFirst();
 
     res.json({
       wallets,
       txRecords,
       metrics,
+      pagination: {
+        page,
+        limit,
+        total: totalRecords,
+        totalPages: Math.ceil(totalRecords / limit)
+      }
     });
   } catch (error) {
     logger.error('Failed to fetch dashboard data:', error);

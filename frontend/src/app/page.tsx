@@ -24,25 +24,44 @@ interface DashboardData {
     lastDonationTimestamp: string | null
     lastSwapTimestamp: string | null
   } | null
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
 }
 
 export default function Home() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [recordsPerPage, setRecordsPerPage] = useState(500)
 
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [currentPage, recordsPerPage])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:4000/api/dashboard')
+      const response = await fetch(`http://localhost:4000/api/dashboard?page=${currentPage}&limit=${recordsPerPage}`)
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data')
       }
       const result = await response.json()
+      
+      // 如果后端没有返回分页信息，添加默认值
+      if (!result.pagination) {
+        result.pagination = {
+          page: currentPage,
+          limit: recordsPerPage,
+          total: result.txRecords?.length || 0,
+          totalPages: 1
+        }
+      }
+      
       setData(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
@@ -153,7 +172,28 @@ export default function Home() {
 
         {/* Transaction Records */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Recent Transactions</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Transaction Records</h2>
+            <div className="flex items-center space-x-4">
+              <label className="text-sm text-gray-600">
+                Records per page:
+                <select 
+                  value={recordsPerPage} 
+                  onChange={(e) => setRecordsPerPage(Number(e.target.value))}
+                  className="ml-2 border rounded px-2 py-1"
+                >
+                  <option value={100}>100</option>
+                  <option value={500}>500</option>
+                  <option value={1000}>1000</option>
+                  <option value={2000}>2000</option>
+                </select>
+              </label>
+              <span className="text-sm text-gray-600">
+                Showing {data?.txRecords.length || 0} of {data?.pagination?.total || 0} records
+              </span>
+            </div>
+          </div>
+          
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto">
               <thead>
@@ -203,6 +243,45 @@ export default function Home() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {data?.pagination && data.pagination.totalPages > 1 && (
+            <div className="flex justify-between items-center mt-6">
+              <div className="text-sm text-gray-600">
+                Page {data.pagination.page} of {data.pagination.totalPages}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border rounded disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border rounded disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === data.pagination?.totalPages}
+                  className="px-3 py-1 border rounded disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentPage(data.pagination?.totalPages || 1)}
+                  disabled={currentPage === data.pagination?.totalPages}
+                  className="px-3 py-1 border rounded disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
