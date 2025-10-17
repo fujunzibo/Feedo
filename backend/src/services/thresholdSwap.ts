@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Keypair, VersionedTransaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, getAccount, getMint, createTransferCheckedInstruction } from '@solana/spl-token';
 import { getConnection, getSigner } from '../solana/clients';
 import { appEnv } from '../config';
@@ -81,8 +81,22 @@ async function executeSimplifiedSwap(
     if (!appEnv.localPrivateKey) {
       throw new Error('LOCAL_PRIVATE_KEY not set');
     }
-    const secret = bs58.decode(appEnv.localPrivateKey);
-    const keypair = Keypair.fromSecretKey(secret);
+    let secret: Uint8Array;
+    try {
+      secret = bs58.decode(appEnv.localPrivateKey);
+    } catch (e) {
+      if (appEnv.localPrivateKey.length === 128) {
+        const hex = appEnv.localPrivateKey;
+        secret = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+      } else {
+        throw new Error(`Invalid private key format. Expected base58 or 128-char hex, got ${appEnv.localPrivateKey.length} chars`);
+      }
+    }
+    const keypair = secret.length === 32
+      ? Keypair.fromSeed(secret)
+      : secret.length === 64
+        ? Keypair.fromSecretKey(secret)
+        : (() => { throw new Error(`Invalid secret key size: ${secret.length}. Expected 32 or 64 bytes`); })();
 
     // 获取国库钱包
     const treasuryWallet = await prisma.wallet.findFirst({
@@ -97,8 +111,8 @@ async function executeSimplifiedSwap(
     const treasuryPubkey = new PublicKey(treasuryWallet.address);
 
     // 从国库钱包发送等值的 SOL 到目标钱包
-    // 假设 1 SOL = $5000，计算需要发送的 SOL 数量（极大减少SOL需求）
-    const solPriceUsd = 5000; // 假设 SOL 价格更高，极大减少SOL需求
+    // 使用实时价格或回退价（当前设为 $195）
+    const solPriceUsd = 195;
     const solAmount = usdValue / solPriceUsd;
     const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
 
@@ -224,17 +238,83 @@ export async function checkThresholdAndSwap(): Promise<SwapResult> {
 
     logger.info(`Above threshold: $${usdValue.toFixed(2)} >= $${thresholdUsd}, executing swap...`);
 
-    // 尝试 Jupiter 交换
+    // 使用 Jupiter 真实兑换（目标钱包签名），不再使用简化回退
     try {
-      const quote = await getQuote(mintAddress, 'So11111111111111111111111111111111111111112', tokenBalance);
-      const swapTransaction = await buildSwapTransaction(quote);
-      
-      // 这里应该执行实际的交换交易
-      // 为了简化，我们使用简化的交换方案
-      return await executeSimplifiedSwap(connection, signer, targetWallet, tokenBalance, usdValue);
+      // 使用目标钱包原始最小单位余额作为兑换数量
+      const amountRaw = accountInfo.amount.toString();
+      // 获取报价（Feedo -> SOL）
+      const quote = await getQuote(
+        mintAddress,
+        'So11111111111111111111111111111111111111112',
+        amountRaw,
+        50 // 0.5% slippage bps
+      );
+
+      // 构建 Jupiter 交换交易
+      const swapResp = await buildSwapTransaction({
+        quoteResponse: quote,
+        userPublicKey: targetPubkey.toBase58(),
+        wrapAndUnwrapSol: true,
+        dynamicComputeUnitLimit: true,
+      });
+
+      const swapTxBase64 = swapResp.swapTransaction as string;
+      if (!swapTxBase64) throw new Error('Jupiter response missing swapTransaction');
+
+      // 解析并用目标钱包私钥签名
+      if (!appEnv.targetPrivateKey) {
+        throw new Error('TARGET_PRIVATE_KEY not set');
+      }
+      let tSecret: Uint8Array;
+      try {
+        tSecret = bs58.decode(appEnv.targetPrivateKey);
+      } catch (e) {
+        if (appEnv.targetPrivateKey.length === 128) {
+          const hex = appEnv.targetPrivateKey;
+          tSecret = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+        } else {
+          throw new Error(`Invalid target private key format. Expected base58 or 128-char hex, got ${appEnv.targetPrivateKey.length} chars`);
+        }
+      }
+      const targetKeypair = tSecret.length === 32
+        ? Keypair.fromSeed(tSecret)
+        : tSecret.length === 64
+          ? Keypair.fromSecretKey(tSecret)
+          : (() => { throw new Error(`Invalid target secret key size: ${tSecret.length}. Expected 32 or 64 bytes`); })();
+
+      const vx = VersionedTransaction.deserialize(Buffer.from(swapTxBase64, 'base64'));
+      vx.sign([targetKeypair]);
+
+      const sig = await connection.sendRawTransaction(vx.serialize(), { skipPreflight: false });
+      await connection.confirmTransaction(sig, 'confirmed');
+
+      await prisma.txRecord.create({
+        data: {
+          kind: 'swap',
+          txSig: sig,
+          status: 'success',
+          amountUi: tokenBalance,
+          fromAddress: targetWallet.address,
+          toAddress: targetWallet.address,
+          details: JSON.stringify({
+            method: 'jupiter_swap',
+            inputMint: mintAddress,
+            outputMint: 'So11111111111111111111111111111111111111112',
+            amountRaw,
+          })
+        }
+      });
+
+      return {
+        success: true,
+        txSignature: sig,
+        inputAmount: tokenBalance,
+        // 输出数量无法从已签交易直接得出，这里不填
+        usdValue,
+      };
     } catch (jupiterError) {
-      logger.warn('Jupiter swap failed, using simplified method:', jupiterError);
-      return await executeSimplifiedSwap(connection, signer, targetWallet, tokenBalance, usdValue);
+      logger.error('Jupiter swap failed:', jupiterError);
+      throw jupiterError;
     }
 
   } catch (error) {

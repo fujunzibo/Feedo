@@ -44,4 +44,13 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
   }
+  ,
+  "exclude": [
+    "backend",
+    "frontend",
+    "shared",
+    "node_modules",
+    "**/node_modules/**",
+    "**/dist/**"
+  ]
 }

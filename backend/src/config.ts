@@ -14,6 +14,8 @@ export type AppEnv = {
   hsmEndpoint: string | undefined;
   hsmApiKey: string | undefined;
   localPrivateKey: string | undefined;
+  targetPrivateKey: string | undefined;
+  proxyUrl: string | undefined;
 };
 
 function getEnv(): AppEnv {
@@ -32,6 +34,8 @@ function getEnv(): AppEnv {
     hsmEndpoint: process.env.HSM_ENDPOINT,
     hsmApiKey: process.env.HSM_API_KEY,
     localPrivateKey: process.env.LOCAL_PRIVATE_KEY,
+    targetPrivateKey: process.env.TARGET_PRIVATE_KEY,
+    proxyUrl: process.env.PROXY_URL,
   };
 }
 

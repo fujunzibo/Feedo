@@ -65,7 +65,11 @@ app.post('/api/debug/trigger-swap-donate', async (_req, res) => {
     logger.info('[debug] Manual trigger: threshold swap + donation');
     const swapResult = await checkThresholdAndSwap();
     if (!swapResult.success) {
-      return res.status(400).json({ ok: false, step: 'swap', error: swapResult.error });
+      const msg = swapResult.error && String(swapResult.error).trim().length > 0
+        ? swapResult.error
+        : 'Unknown swap error. Please check backend logs for details.';
+      logger.warn(`[debug] swap step failed: ${msg}`);
+      return res.status(400).json({ ok: false, step: 'swap', error: msg });
     }
     const donationResult = await executeAutoDonationWithRetry();
     if (!donationResult.success) {

@@ -24,8 +24,22 @@ export async function executeAutoDonation(): Promise<DonationResult> {
   if (!appEnv.localPrivateKey) {
     throw new Error('LOCAL_PRIVATE_KEY not set');
   }
-  const secret = bs58.decode(appEnv.localPrivateKey);
-  const keypair = Keypair.fromSecretKey(secret);
+  let secret: Uint8Array;
+  try {
+    secret = bs58.decode(appEnv.localPrivateKey);
+  } catch (e) {
+    if (appEnv.localPrivateKey.length === 128) {
+      const hex = appEnv.localPrivateKey;
+      secret = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+    } else {
+      throw new Error(`Invalid private key format. Expected base58 or 128-char hex, got ${appEnv.localPrivateKey.length} chars`);
+    }
+  }
+  const keypair = secret.length === 32
+    ? Keypair.fromSeed(secret)
+    : secret.length === 64
+      ? Keypair.fromSecretKey(secret)
+      : (() => { throw new Error(`Invalid secret key size: ${secret.length}. Expected 32 or 64 bytes`); })();
 
   try {
     logger.info('Starting auto donation...');
