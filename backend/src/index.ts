@@ -21,13 +21,33 @@ app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 添加简单的内存缓存
+let walletAssetsCache: any = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 30000; // 30秒缓存
+
 // Wallet assets route
 app.get('/api/wallet-assets', async (req, res) => {
   try {
+    // 检查缓存
+    const now = Date.now();
+    if (walletAssetsCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      return res.json({
+        success: true,
+        wallets: walletAssetsCache,
+        timestamp: new Date().toISOString(),
+        cached: true
+      });
+    }
+
     const wallets = await prisma.wallet.findMany();
     const connection = getConnection();
     const mintAddress = '5n8sDdBMjsLwtLRVpcFrhFcGa4cXdaUiWKKwNyos8fFK'; // FEEDO token
-    
+
+    // 并行获取SOL价格，避免重复请求
+    const solPricePromise = getSolPriceUsd();
+    const tokenPriceUsd = 0.001; // FEEDO代币固定价格
+
     const walletAssets = await Promise.all(wallets.map(async (wallet) => {
       try {
         const pubkey = new PublicKey(wallet.address);
@@ -54,9 +74,8 @@ app.get('/api/wallet-assets', async (req, res) => {
           tokenBalanceFormatted = 0;
         }
         
-        // 获取代币价格 (使用固定价格作为演示)
-        const tokenPriceUsd = 0.001; // FEEDO代币固定价格 $0.001
-        const solPriceUsd = await getSolPriceUsd();
+        // 等待SOL价格
+        const solPriceUsd = await solPricePromise;
         
         return {
           id: wallet.id,
@@ -85,11 +104,16 @@ app.get('/api/wallet-assets', async (req, res) => {
         };
       }
     }));
-    
+
+    // 更新缓存
+    walletAssetsCache = walletAssets;
+    cacheTimestamp = now;
+
     res.json({
       success: true,
       wallets: walletAssets,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      cached: false
     });
   } catch (error) {
     logger.error('Failed to fetch wallet assets:', error);

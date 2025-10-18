@@ -49,14 +49,20 @@ export default function Home() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [walletAssets, setWalletAssets] = useState<WalletAsset[]>([])
   const [loading, setLoading] = useState(true)
+  const [walletAssetsLoading, setWalletAssetsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [recordsPerPage, setRecordsPerPage] = useState(500)
 
   useEffect(() => {
     fetchDashboardData()
-    fetchWalletAssets()
   }, [currentPage, recordsPerPage])
+
+  // 只在组件首次挂载时获取钱包资产，避免重复请求
+  useEffect(() => {
+    // 立即开始获取钱包资产，不等待其他数据
+    fetchWalletAssets()
+  }, [])
 
   const fetchDashboardData = async () => {
     try {
@@ -87,6 +93,7 @@ export default function Home() {
 
   const fetchWalletAssets = async () => {
     try {
+      setWalletAssetsLoading(true)
       console.log('Fetching wallet assets...')
       const response = await fetch('http://localhost:3001/api/wallet-assets')
       console.log('Response status:', response.status)
@@ -104,6 +111,8 @@ export default function Home() {
       }
     } catch (err) {
       console.error('Error fetching wallet assets:', err)
+    } finally {
+      setWalletAssetsLoading(false)
     }
   }
 
@@ -128,10 +137,11 @@ export default function Home() {
     }
   }
 
-  if (loading) {
+  // 只有在没有数据且正在加载时才显示全屏加载
+  if (loading && !data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+        <div className="text-xl">Loading dashboard...</div>
       </div>
     )
   }
@@ -176,12 +186,18 @@ export default function Home() {
             <h2 className="text-xl font-semibold">Wallet Assets</h2>
             <button
               onClick={fetchWalletAssets}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+              disabled={walletAssetsLoading}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm"
             >
-              Refresh
+              {walletAssetsLoading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {walletAssetsLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="text-lg text-gray-600">Loading wallet assets...</div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {walletAssets.map((wallet) => (
               <div key={wallet.id} className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex justify-between items-start mb-3">
@@ -247,6 +263,7 @@ export default function Home() {
               </div>
             ))}
           </div>
+          )}
         </div>
 
         {/* Metrics */}
