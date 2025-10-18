@@ -56,6 +56,7 @@ model TxRecord {
   fromAddress String?
   toAddress   String?
   details     String?  // Store as JSON string
+  metadata    String?  // Store as JSON string for swap metadata
 }
 
 model RetryTask {

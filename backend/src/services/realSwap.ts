@@ -81,13 +81,13 @@ export class RealSwapService {
             amountUi: request.amount,
             fromAddress: walletPubkey.toBase58(),
             toAddress: walletPubkey.toBase58(),
-            metadata: {
+            metadata: JSON.stringify({
               fromToken: 'SOL',
               toToken: 'FEEDO',
               feudoAmount: feudoAmount,
               rate: 1000,
               internal: true
-            }
+            })
           }
         });
 
@@ -112,13 +112,13 @@ export class RealSwapService {
             amountUi: feudoAmount,
             fromAddress: walletPubkey.toBase58(),
             toAddress: walletPubkey.toBase58(),
-            metadata: {
+            metadata: JSON.stringify({
               fromToken: 'FEEDO',
               toToken: 'SOL',
               solAmount: solAmount,
               rate: 0.001,
               internal: true
-            }
+            })
           }
         });
 
@@ -289,12 +289,12 @@ export class RealSwapService {
           amountUi: solAmount,
           fromAddress: fromWallet.toBase58(),
           toAddress: toWallet.toBase58(),
-          metadata: {
+          metadata: JSON.stringify({
             fromToken: 'SOL',
             toToken: 'FEEDO',
             feudoAmount: feudoAmount,
             rate: 1000
-          }
+          })
         }
       });
 
@@ -368,12 +368,12 @@ export class RealSwapService {
           amountUi: feudoAmount,
           fromAddress: fromWallet.toBase58(),
           toAddress: toWallet.toBase58(),
-          metadata: {
+          metadata: JSON.stringify({
             fromToken: 'FEEDO',
             toToken: 'SOL',
             solAmount: solAmount,
             rate: 0.001
-          }
+          })
         }
       });
 
