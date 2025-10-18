@@ -159,12 +159,20 @@ export default function Home() {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Feedo Fund Dashboard</h1>
-          <a 
-            href="/exchange" 
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Token Exchange
-          </a>
+                 <div className="flex space-x-4">
+                   <a
+                     href="/exchange"
+                     className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                   >
+                     Token Exchange
+                   </a>
+                   <a
+                     href="/swap"
+                     className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                   >
+                     代币兑换
+                   </a>
+                 </div>
         </div>
         
         

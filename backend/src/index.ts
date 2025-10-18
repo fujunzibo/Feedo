@@ -11,6 +11,7 @@ import { PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress, getAccount, getMint } from '@solana/spl-token';
 import { getConnection } from './solana/clients';
 import { getSolPriceUsd } from './services/pricing';
+import { realSwapService } from './services/realSwap';
 
 const app = express();
 app.use(express.json());
@@ -254,6 +255,131 @@ scheduleMonthlyTransfer(async () => {
 scheduleThresholdSwap(async () => {
   logger.info('Executing threshold swap...');
   await checkThresholdAndSwapWithRetry();
+});
+
+// Exchange swap route
+app.post('/api/exchange/swap', async (req, res) => {
+  try {
+    const { fromToken, toToken, amount, slippage, fromWalletId, toWalletId } = req.body;
+
+    if (appEnv.demoMode) {
+      return res.json({
+        success: true,
+        message: '演示模式：需要配置签名者才能执行真实交易。当前为演示环境。',
+        demo: true
+      });
+    }
+
+    // 执行真实的代币兑换
+    const swapResult = await realSwapService.executeSwap({
+      fromWalletId,
+      toWalletId,
+      fromToken,
+      toToken,
+      amount,
+      slippage
+    });
+
+    res.json(swapResult);
+  } catch (error) {
+    logger.error('Exchange swap failed:', error);
+    res.status(500).json({ error: 'Exchange swap failed' });
+  }
+});
+
+// Real swap execution route
+app.post('/api/swap/execute', async (req, res) => {
+  try {
+    const { fromWalletId, toWalletId, fromToken, toToken, amount, slippage } = req.body;
+
+    if (!fromWalletId || !toWalletId || !fromToken || !toToken || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters'
+      });
+    }
+
+    const swapResult = await realSwapService.executeSwap({
+      fromWalletId,
+      toWalletId,
+      fromToken,
+      toToken,
+      amount,
+      slippage
+    });
+
+    res.json(swapResult);
+  } catch (error) {
+    logger.error('Real swap execution failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Swap execution failed'
+    });
+  }
+});
+
+// Get swap rate
+app.get('/api/swap/rate', async (req, res) => {
+  try {
+    const { fromToken, toToken } = req.query;
+
+    if (!fromToken || !toToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing fromToken or toToken parameter'
+      });
+    }
+
+    const rate = await realSwapService.getSwapRate(
+      fromToken as 'SOL' | 'FEEDO',
+      toToken as 'SOL' | 'FEEDO'
+    );
+
+    res.json({
+      success: true,
+      rate,
+      fromToken,
+      toToken
+    });
+  } catch (error) {
+    logger.error('Failed to get swap rate:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get swap rate'
+    });
+  }
+});
+
+// Get wallet token balance
+app.get('/api/wallet/:walletId/balance/:token', async (req, res) => {
+  try {
+    const { walletId, token } = req.params;
+
+    if (!walletId || !token) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing walletId or token parameter'
+      });
+    }
+
+    const balance = await realSwapService.getWalletTokenBalance(
+      walletId,
+      token as 'SOL' | 'FEEDO'
+    );
+
+    res.json({
+      success: true,
+      balance,
+      token,
+      walletId
+    });
+  } catch (error) {
+    logger.error('Failed to get wallet token balance:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get wallet token balance'
+    });
+  }
 });
 
 const server = app.listen(appEnv.port, () => {

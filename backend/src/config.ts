@@ -16,6 +16,7 @@ export type AppEnv = {
   localPrivateKey: string | undefined;
   targetPrivateKey: string | undefined;
   proxyUrl: string | undefined;
+  demoMode: boolean;
 };
 
 function getEnv(): AppEnv {
@@ -36,6 +37,7 @@ function getEnv(): AppEnv {
     localPrivateKey: process.env.LOCAL_PRIVATE_KEY,
     targetPrivateKey: process.env.TARGET_PRIVATE_KEY,
     proxyUrl: process.env.PROXY_URL,
+    demoMode: process.env.DEMO_MODE === 'true' || process.env.NODE_ENV === 'development',
   };
 }
 
