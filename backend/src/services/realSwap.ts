@@ -1,4 +1,13 @@
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { 
+  Connection, 
+  PublicKey, 
+  Transaction, 
+  SystemProgram, 
+  LAMPORTS_PER_SOL,
+  Keypair,
+  sendAndConfirmTransaction,
+  TransactionInstruction
+} from '@solana/web3.js';
 import { 
   createTransferInstruction, 
   getAssociatedTokenAddress, 
@@ -6,15 +15,17 @@ import {
   getMint,
   createAssociatedTokenAccountInstruction,
   TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  createMintToInstruction,
+  createBurnInstruction
 } from '@solana/spl-token';
 import { getConnection } from '../solana/clients';
 import { logger } from '../lib/logger';
 import { prisma } from '../lib/prisma';
+import { appEnv } from '../config';
 
 // FEEDO代币的mint地址
 const FEEDO_MINT = new PublicKey('5n8sDdBMjsLwtLRVpcFrhFcGa4cXdaUiWKKwNyos8fFK');
-const SOL_MINT = new PublicKey('So11111111111111111111111111111111111111112');
 
 export interface SwapRequest {
   fromWalletId: string;
@@ -36,112 +47,32 @@ export interface SwapResult {
 
 export class RealSwapService {
   private connection: Connection;
+  private signer: Keypair | null = null;
 
   constructor() {
     this.connection = getConnection();
+    this.initializeSigner();
   }
 
   /**
-   * 执行内部代币兑换（同一钱包内）
+   * 初始化签名者
    */
-  private async executeInternalSwap(
-    walletPubkey: PublicKey,
-    request: SwapRequest
-  ): Promise<SwapResult> {
+  private initializeSigner() {
     try {
-      logger.info('Executing internal swap within same wallet:', {
-        wallet: walletPubkey.toBase58(),
-        fromToken: request.fromToken,
-        toToken: request.toToken,
-        amount: request.amount
-      });
-
-      // 检查余额
-      const balanceCheck = await this.checkBalances(walletPubkey, request.fromToken, request.amount);
-      if (!balanceCheck.sufficient) {
-        return {
-          success: false,
-          error: `Insufficient ${request.fromToken} balance. Available: ${balanceCheck.available}, Required: ${request.amount}`
-        };
-      }
-
-      // 创建交易记录
-      const transaction = new Transaction();
-
-      if (request.fromToken === 'SOL' && request.toToken === 'FEEDO') {
-        // SOL -> FEEDO: 模拟铸造FEEDO代币
-        const feudoAmount = Math.floor(request.amount * 1000 * 1e6); // 假设FEEDO有6位小数
-
-        // 记录到数据库
-        await prisma.txRecord.create({
-          data: {
-            kind: 'swap',
-            txSig: 'internal_sol_to_feudo_' + Date.now(),
-            status: 'success',
-            amountUi: request.amount,
-            fromAddress: walletPubkey.toBase58(),
-            toAddress: walletPubkey.toBase58(),
-            metadata: JSON.stringify({
-              fromToken: 'SOL',
-              toToken: 'FEEDO',
-              feudoAmount: feudoAmount,
-              rate: 1000,
-              internal: true
-            })
-          }
-        });
-
-        return {
-          success: true,
-          transactionSignature: 'internal_sol_to_feudo_' + Date.now(),
-          fromAmount: request.amount,
-          toAmount: request.amount * 1000
-        };
-
-      } else if (request.fromToken === 'FEEDO' && request.toToken === 'SOL') {
-        // FEEDO -> SOL: 模拟销毁FEEDO代币并释放SOL
-        const feudoAmount = request.amount;
-        const solAmount = feudoAmount / 1000; // 1000 FEEDO = 1 SOL
-
-        // 记录到数据库
-        await prisma.txRecord.create({
-          data: {
-            kind: 'swap',
-            txSig: 'internal_feudo_to_sol_' + Date.now(),
-            status: 'success',
-            amountUi: feudoAmount,
-            fromAddress: walletPubkey.toBase58(),
-            toAddress: walletPubkey.toBase58(),
-            metadata: JSON.stringify({
-              fromToken: 'FEEDO',
-              toToken: 'SOL',
-              solAmount: solAmount,
-              rate: 0.001,
-              internal: true
-            })
-          }
-        });
-
-        return {
-          success: true,
-          transactionSignature: 'internal_feudo_to_sol_' + Date.now(),
-          fromAmount: request.amount,
-          toAmount: solAmount
-        };
-
+      logger.info('Initializing signer...');
+      logger.info('appEnv.localPrivateKey:', appEnv.localPrivateKey);
+      
+      if (appEnv.localPrivateKey) {
+        // 从环境变量中获取私钥
+        const privateKeyArray = JSON.parse(appEnv.localPrivateKey);
+        this.signer = Keypair.fromSecretKey(new Uint8Array(privateKeyArray));
+        logger.info('Signer initialized from environment variable');
+        logger.info('Signer public key:', this.signer.publicKey.toBase58());
       } else {
-        return {
-          success: false,
-          error: 'Unsupported internal swap pair'
-        };
+        logger.warn('No private key found in environment variables. Swaps will be simulated.');
       }
-
     } catch (error) {
-      logger.error('Internal swap execution failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Internal swap failed'
-      };
+      logger.error('Failed to initialize signer:', error);
     }
   }
 
@@ -152,28 +83,47 @@ export class RealSwapService {
     try {
       logger.info('Starting real swap execution:', request);
 
-      // 获取钱包信息
+      // 检查是否有签名者
+      if (!this.signer) {
+        return {
+          success: false,
+          error: 'No signer available. Please configure LOCAL_PRIVATE_KEY in environment variables.'
+        };
+      }
+
+      // 检查签名者公钥是否与源钱包匹配
       const fromWallet = await prisma.wallet.findUnique({
         where: { id: request.fromWalletId }
       });
+
+      if (!fromWallet) {
+        return {
+          success: false,
+          error: 'Source wallet not found'
+        };
+      }
+
+      if (this.signer.publicKey.toBase58() !== fromWallet.address) {
+        return {
+          success: false,
+          error: `Signer public key (${this.signer.publicKey.toBase58()}) does not match source wallet address (${fromWallet.address}). Please use the correct private key for the source wallet.`
+        };
+      }
+
+      // 获取目标钱包信息
       const toWallet = await prisma.wallet.findUnique({
         where: { id: request.toWalletId }
       });
 
-      if (!fromWallet || !toWallet) {
+      if (!toWallet) {
         return {
           success: false,
-          error: 'Wallet not found'
+          error: 'Target wallet not found'
         };
       }
 
       const fromWalletPubkey = new PublicKey(fromWallet.address);
       const toWalletPubkey = new PublicKey(toWallet.address);
-
-      // 如果是同一个钱包，进行内部代币兑换
-      if (fromWallet.id === toWallet.id) {
-        return await this.executeInternalSwap(fromWalletPubkey, request);
-      }
 
       // 检查余额
       const balanceCheck = await this.checkBalances(fromWalletPubkey, request.fromToken, request.amount);
@@ -188,45 +138,15 @@ export class RealSwapService {
       const transaction = new Transaction();
 
       if (request.fromToken === 'SOL' && request.toToken === 'FEEDO') {
-        // SOL -> FEEDO: 使用固定汇率 1 SOL = 1000 FEEDO
-        const result = await this.swapSolToFeedo(
-          transaction,
-          fromWalletPubkey,
-          toWalletPubkey,
-          request.amount
-        );
-        
-        if (!result.success) {
-          return result;
-        }
+        return await this.swapSolToFeedo(transaction, fromWalletPubkey, toWalletPubkey, request.amount);
       } else if (request.fromToken === 'FEEDO' && request.toToken === 'SOL') {
-        // FEEDO -> SOL: 使用固定汇率 1000 FEEDO = 1 SOL
-        const result = await this.swapFeedoToSol(
-          transaction,
-          fromWalletPubkey,
-          toWalletPubkey,
-          request.amount
-        );
-        
-        if (!result.success) {
-          return result;
-        }
+        return await this.swapFeedoToSol(transaction, fromWalletPubkey, toWalletPubkey, request.amount);
       } else {
         return {
           success: false,
           error: 'Unsupported swap pair'
         };
       }
-
-      // 记录交易到数据库
-      await this.recordSwapTransaction(request, transaction);
-
-      return {
-        success: true,
-        transactionSignature: 'simulated_tx_signature', // 在实际环境中，这里应该是真实的交易签名
-        fromAmount: request.amount,
-        toAmount: request.fromToken === 'SOL' ? request.amount * 1000 : request.amount / 1000
-      };
 
     } catch (error) {
       logger.error('Swap execution failed:', error);
@@ -247,6 +167,8 @@ export class RealSwapService {
     solAmount: number
   ): Promise<SwapResult> {
     try {
+      logger.info(`Executing SOL to FEEDO swap: ${solAmount} SOL`);
+
       // 1. 从源钱包转移SOL到目标钱包
       const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
       const transferInstruction = SystemProgram.transfer({
@@ -276,15 +198,32 @@ export class RealSwapService {
         transaction.add(createAccountInstruction);
       }
 
-      // 3. 模拟铸造FEEDO代币到目标钱包
-      // 注意：在实际环境中，这需要与代币合约交互
+      // 3. 铸造FEEDO代币到目标钱包
       const feudoAmount = Math.floor(solAmount * 1000 * 1e6); // 假设FEEDO有6位小数
+      const mintInstruction = createMintToInstruction(
+        FEEDO_MINT,
+        feudoTokenAccount,
+        fromWallet, // mint authority (需要是mint的authority)
+        feudoAmount
+      );
+      transaction.add(mintInstruction);
 
-      // 记录到数据库
+      // 4. 发送交易
+      const signature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [this.signer!],
+        {
+          commitment: 'confirmed',
+          skipPreflight: false
+        }
+      );
+
+      // 5. 记录到数据库
       await prisma.txRecord.create({
         data: {
           kind: 'swap',
-          txSig: 'simulated_sol_to_feudo_' + Date.now(),
+          txSig: signature,
           status: 'success',
           amountUi: solAmount,
           fromAddress: fromWallet.toBase58(),
@@ -293,12 +232,20 @@ export class RealSwapService {
             fromToken: 'SOL',
             toToken: 'FEEDO',
             feudoAmount: feudoAmount,
-            rate: 1000
+            rate: 1000,
+            signature: signature
           })
         }
       });
 
-      return { success: true };
+      logger.info(`SOL to FEEDO swap successful: ${signature}`);
+
+      return {
+        success: true,
+        transactionSignature: signature,
+        fromAmount: solAmount,
+        toAmount: solAmount * 1000
+      };
 
     } catch (error) {
       logger.error('SOL to FEEDO swap failed:', error);
@@ -319,6 +266,8 @@ export class RealSwapService {
     feudoAmount: number
   ): Promise<SwapResult> {
     try {
+      logger.info(`Executing FEEDO to SOL swap: ${feudoAmount} FEEDO`);
+
       // 1. 检查FEEDO代币余额
       const feudoTokenAccount = await getAssociatedTokenAddress(
         FEEDO_MINT,
@@ -337,17 +286,15 @@ export class RealSwapService {
         };
       }
 
-      // 2. 转移FEEDO代币（销毁）
+      // 2. 销毁FEEDO代币
       const feudoAmountRaw = Math.floor(feudoAmount * Math.pow(10, mintInfo.decimals));
-      const transferInstruction = createTransferInstruction(
+      const burnInstruction = createBurnInstruction(
         feudoTokenAccount,
-        feudoTokenAccount, // 在实际环境中，应该转移到销毁地址
-        fromWallet,
-        feudoAmountRaw,
-        [],
-        TOKEN_PROGRAM_ID
+        FEEDO_MINT,
+        fromWallet, // owner
+        feudoAmountRaw
       );
-      transaction.add(transferInstruction);
+      transaction.add(burnInstruction);
 
       // 3. 转移SOL到源钱包
       const solAmount = feudoAmount / 1000; // 1000 FEEDO = 1 SOL
@@ -359,11 +306,22 @@ export class RealSwapService {
       });
       transaction.add(transferSolInstruction);
 
-      // 记录到数据库
+      // 4. 发送交易
+      const signature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [this.signer!],
+        {
+          commitment: 'confirmed',
+          skipPreflight: false
+        }
+      );
+
+      // 5. 记录到数据库
       await prisma.txRecord.create({
         data: {
           kind: 'swap',
-          txSig: 'simulated_feudo_to_sol_' + Date.now(),
+          txSig: signature,
           status: 'success',
           amountUi: feudoAmount,
           fromAddress: fromWallet.toBase58(),
@@ -372,12 +330,20 @@ export class RealSwapService {
             fromToken: 'FEEDO',
             toToken: 'SOL',
             solAmount: solAmount,
-            rate: 0.001
+            rate: 0.001,
+            signature: signature
           })
         }
       });
 
-      return { success: true };
+      logger.info(`FEEDO to SOL swap successful: ${signature}`);
+
+      return {
+        success: true,
+        transactionSignature: signature,
+        fromAmount: feudoAmount,
+        toAmount: solAmount
+      };
 
     } catch (error) {
       logger.error('FEEDO to SOL swap failed:', error);
@@ -435,24 +401,6 @@ export class RealSwapService {
         sufficient: false,
         available: 0
       };
-    }
-  }
-
-  /**
-   * 记录兑换交易
-   */
-  private async recordSwapTransaction(request: SwapRequest, transaction: Transaction) {
-    try {
-      // 这里可以添加更多交易记录逻辑
-      logger.info('Swap transaction recorded:', {
-        fromWallet: request.fromWalletId,
-        toWallet: request.toWalletId,
-        fromToken: request.fromToken,
-        toToken: request.toToken,
-        amount: request.amount
-      });
-    } catch (error) {
-      logger.error('Failed to record swap transaction:', error);
     }
   }
 
