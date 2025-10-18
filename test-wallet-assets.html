@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Assets Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .wallet { border: 1px solid #ccc; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Wallet Assets Test</h1>
+    <button onclick="testWalletAssets()">Test Wallet Assets API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testWalletAssets() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/wallet-assets', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = '<h2>Wallet Assets:</h2>';
+                    data.wallets.forEach(wallet => {
+                        html += `
+                            <div class="wallet">
+                                <h3>${wallet.name} (${wallet.type})</h3>
+                                <p><strong>Address:</strong> ${wallet.address}</p>
+                                <p><strong>SOL Balance:</strong> ${wallet.solBalance.toFixed(4)} SOL ($${wallet.solBalanceUsd.toFixed(2)})</p>
+                                <p><strong>FEEDO Balance:</strong> ${wallet.tokenBalance.toFixed(2)} FEEDO ($${wallet.tokenBalanceUsd.toFixed(2)})</p>
+                                <p><strong>Total Value:</strong> $${wallet.totalUsd.toFixed(2)}</p>
+                                ${wallet.error ? `<p class="error">Error: ${wallet.error}</p>` : ''}
+                            </div>
+                        `;
+                    });
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">API Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

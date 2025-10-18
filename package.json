@@ -1,13 +1,33 @@
 {
-  "name": "feedo-fund",
-  "private": true,
-  "workspaces": [
-    "backend",
-    "frontend",
-    "shared"
-  ],
+  "name": "solana",
+  "version": "1.0.0",
+  "main": "index.js",
   "scripts": {
-    "build": "echo build root",
-    "dev": "echo dev root"
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "axios": "^1.12.2",
+    "cross-fetch": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "helius-sdk": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "pino": "^10.0.0",
+    "ws": "^8.18.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.7.2",
+    "prisma": "^6.17.1",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3"
   }
 }

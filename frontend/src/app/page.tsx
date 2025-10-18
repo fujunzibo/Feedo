@@ -2,6 +2,19 @@
 
 import { useState, useEffect } from 'react'
 
+interface WalletAsset {
+  id: string
+  name: string
+  type: string
+  address: string
+  solBalance: number
+  solBalanceUsd: number
+  tokenBalance: number
+  tokenBalanceUsd: number
+  totalUsd: number
+  error?: string
+}
+
 interface DashboardData {
   wallets: Array<{
     id: string
@@ -34,6 +47,7 @@ interface DashboardData {
 
 export default function Home() {
   const [data, setData] = useState<DashboardData | null>(null)
+  const [walletAssets, setWalletAssets] = useState<WalletAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -41,12 +55,13 @@ export default function Home() {
 
   useEffect(() => {
     fetchDashboardData()
+    fetchWalletAssets()
   }, [currentPage, recordsPerPage])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`http://localhost:4000/api/dashboard?page=${currentPage}&limit=${recordsPerPage}`)
+      const response = await fetch(`http://localhost:3001/api/dashboard?page=${currentPage}&limit=${recordsPerPage}`)
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data')
       }
@@ -70,10 +85,32 @@ export default function Home() {
     }
   }
 
+  const fetchWalletAssets = async () => {
+    try {
+      console.log('Fetching wallet assets...')
+      const response = await fetch('http://localhost:3001/api/wallet-assets')
+      console.log('Response status:', response.status)
+      if (!response.ok) {
+        throw new Error('Failed to fetch wallet assets')
+      }
+      const result = await response.json()
+      console.log('Wallet assets result:', result)
+      
+      if (result.success) {
+        setWalletAssets(result.wallets)
+        console.log('Wallet assets set:', result.wallets)
+      } else {
+        console.error('Failed to fetch wallet assets:', result.error)
+      }
+    } catch (err) {
+      console.error('Error fetching wallet assets:', err)
+    }
+  }
+
   const triggerFullWorkflow = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:4000/api/debug/trigger-full-workflow', {
+      const response = await fetch('http://localhost:3001/api/debug/trigger-full-workflow', {
         method: 'POST',
       })
       const result = await response.json()
@@ -110,7 +147,16 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Feedo Fund Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Feedo Fund Dashboard</h1>
+          <a 
+            href="/exchange" 
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Token Exchange
+          </a>
+        </div>
+        
         
         {/* Control Panel */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
@@ -124,14 +170,80 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Wallets */}
+        {/* Wallet Assets */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Wallets</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {data?.wallets.map((wallet) => (
-              <div key={wallet.id} className="border rounded p-4">
-                <h3 className="font-medium capitalize">{wallet.type}</h3>
-                <p className="text-sm text-gray-600 break-all">{wallet.address}</p>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Wallet Assets</h2>
+            <button
+              onClick={fetchWalletAssets}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+            >
+              Refresh
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {walletAssets.map((wallet) => (
+              <div key={wallet.id} className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-semibold text-lg capitalize text-gray-800">
+                    {wallet.name}
+                  </h3>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    wallet.type === 'treasury' ? 'bg-blue-100 text-blue-800' :
+                    wallet.type === 'target' ? 'bg-green-100 text-green-800' :
+                    'bg-purple-100 text-purple-800'
+                  }`}>
+                    {wallet.type}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 mb-3">
+                         <div className="flex justify-between">
+                           <span className="text-sm text-gray-600">SOL Balance:</span>
+                           <span className="font-medium text-gray-800">
+                             {wallet.error ? 'Error' : `${wallet.solBalance.toFixed(4)} SOL`}
+                           </span>
+                         </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">SOL Value:</span>
+                    <span className="font-medium text-green-600">
+                      {wallet.error ? 'Error' : `$${wallet.solBalanceUsd.toFixed(2)}`}
+                    </span>
+                  </div>
+                         <div className="flex justify-between">
+                           <span className="text-sm text-gray-600">FEEDO Balance:</span>
+                           <span className="font-medium text-gray-800">
+                             {wallet.error ? 'Error' : `${wallet.tokenBalance.toFixed(2)} FEEDO`}
+                           </span>
+                         </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">FEEDO Value:</span>
+                    <span className="font-medium text-green-600">
+                      {wallet.error ? 'Error' : `$${wallet.tokenBalanceUsd.toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="border-t pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Total Value:</span>
+                    <span className="text-lg font-bold text-green-600">
+                      {wallet.error ? 'Error' : `$${wallet.totalUsd.toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 break-all">
+                    {wallet.address}
+                  </p>
+                </div>
+                
+                {wallet.error && (
+                  <div className="mt-2 text-xs text-red-600">
+                    {wallet.error}
+                  </div>
+                )}
               </div>
             ))}
           </div>
