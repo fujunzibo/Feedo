@@ -189,6 +189,8 @@ export default function SwapPage() {
                   源钱包 *
                 </label>
                 <select
+                  id="fromWalletId"
+                  name="fromWalletId"
                   value={form.fromWalletId}
                   onChange={(e) => setForm(prev => ({ ...prev, fromWalletId: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -213,6 +215,8 @@ export default function SwapPage() {
                   目标钱包 *
                 </label>
                 <select
+                  id="toWalletId"
+                  name="toWalletId"
                   value={form.toWalletId}
                   onChange={(e) => setForm(prev => ({ ...prev, toWalletId: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -243,6 +247,8 @@ export default function SwapPage() {
                     从
                   </label>
                   <select
+                    id="fromToken"
+                    name="fromToken"
                     value={form.fromToken}
                     onChange={(e) => setForm(prev => ({ ...prev, fromToken: e.target.value as 'SOL' | 'FEEDO' }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -269,6 +275,8 @@ export default function SwapPage() {
                     到
                   </label>
                   <select
+                    id="toToken"
+                    name="toToken"
                     value={form.toToken}
                     onChange={(e) => setForm(prev => ({ ...prev, toToken: e.target.value as 'SOL' | 'FEEDO' }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -285,6 +293,8 @@ export default function SwapPage() {
                   兑换数量 *
                 </label>
                 <input
+                  id="amount"
+                  name="amount"
                   type="number"
                   value={form.amount}
                   onChange={(e) => setForm(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
@@ -306,6 +316,8 @@ export default function SwapPage() {
                   滑点容忍度 (%)
                 </label>
                 <input
+                  id="slippage"
+                  name="slippage"
                   type="number"
                   value={form.slippage}
                   onChange={(e) => setForm(prev => ({ ...prev, slippage: parseFloat(e.target.value) || 0 }))}
