@@ -1,0 +1,113 @@
+{
+  "name": "helius-sdk",
+  "version": "2.0.2",
+  "description": "A Helius Node.js SDK for building the future of Solana",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/rpc/index.d.ts",
+      "import": "./dist/rpc/index.js"
+    },
+    "./rpc": {
+      "types": "./dist/rpc/index.d.ts",
+      "import": "./dist/rpc/index.js"
+    },
+    "./rpc/eager": {
+      "types": "./dist/rpc/createHelius.eager.d.ts",
+      "import": "./dist/rpc/createHelius.eager.js"
+    },
+    "./rpc/methods/*": {
+      "types": "./dist/rpc/methods/*.d.ts",
+      "import": "./dist/rpc/methods/*.js"
+    },
+    "./transactions/*": {
+      "types": "./dist/transactions/*.d.ts",
+      "import": "./dist/transactions/*.js"
+    },
+    "./rpc/wrapAutoSend": {
+      "types": "./dist/rpc/wrapAutoSend.d.ts",
+      "import": "./dist/rpc/wrapAutoSend.js"
+    },
+    "./webhooks/*": {
+      "types": "./dist/webhooks/*.d.ts",
+      "import": "./dist/webhooks/*.js"
+    },
+    "./enhanced/*": {
+      "types": "./dist/enhanced/*.d.ts",
+      "import": "./dist/enhanced/*.js"
+    },
+    "./staking/*": {
+      "types": "./dist/staking/*.d.ts",
+      "import": "./dist/staking/*.js"
+    },
+    "./websockets/*": {
+      "types": "./dist/websockets/*.d.ts",
+      "import": "./dist/websockets/*.js"
+    },
+    "./zk/*": {
+      "types": "./dist/zk/*.d.ts",
+      "import": "./dist/zk/*.js"
+    },
+    "./types/*": {
+      "types": "./dist/types/*.d.ts",
+      "import": "./dist/types/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "build": "rimraf dist && rollup -c",
+    "prepare": "pnpm run build",
+    "lint": "eslint --ext .ts,.tsx src",
+    "format": "prettier --write 'src/**/*.{js,ts,json,md}'",
+    "format:check": "prettier --cache --check 'src/**/*.{js,ts,json,md}'",
+    "bundle:size": "bundlemon",
+    "check-all-tree": "node check-all-tree-shake.js",
+    "check-bundle": "pnpm run build && pnpm check-all-tree && bundlemon"
+  },
+  "keywords": [
+    "helius",
+    "solana",
+    "web3",
+    "crypto",
+    "api",
+    "sdk"
+  ],
+  "author": "Helius",
+  "license": "ISC",
+  "dependencies": {
+    "@solana-program/compute-budget": "^0.8.0",
+    "@solana-program/stake": "^0.2.1",
+    "@solana-program/system": "^0.7.0",
+    "@solana/kit": "^2.3.0",
+    "bs58": "^6.0.0",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "agadoo": "^3.0.0",
+    "bundlemon": "^3.1.0",
+    "eslint": "^9.30.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.1",
+    "glob": "^11.0.3",
+    "jest": "^30.0.4",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "rollup": "^4.44.2",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

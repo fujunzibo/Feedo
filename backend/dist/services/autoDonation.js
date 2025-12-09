@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.executeAutoDonation = executeAutoDonation;
 exports.executeAutoDonationWithRetry = executeAutoDonationWithRetry;
-exports.isTransactionProcessed = isTransactionProcessed;
 const web3_js_1 = require("@solana/web3.js");
 const clients_1 = require("../solana/clients");
 const config_1 = require("../config");
@@ -22,11 +21,27 @@ async function executeAutoDonation() {
     if (!config_1.appEnv.localPrivateKey) {
         throw new Error('LOCAL_PRIVATE_KEY not set');
     }
-    const secret = bs58_1.default.decode(config_1.appEnv.localPrivateKey);
-    const keypair = web3_js_1.Keypair.fromSecretKey(secret);
+    let secret;
+    try {
+        secret = bs58_1.default.decode(config_1.appEnv.localPrivateKey);
+    }
+    catch (e) {
+        if (config_1.appEnv.localPrivateKey.length === 128) {
+            const hex = config_1.appEnv.localPrivateKey;
+            secret = new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+        }
+        else {
+            throw new Error(`Invalid private key format. Expected base58 or 128-char hex, got ${config_1.appEnv.localPrivateKey.length} chars`);
+        }
+    }
+    const keypair = secret.length === 32
+        ? web3_js_1.Keypair.fromSeed(secret)
+        : secret.length === 64
+            ? web3_js_1.Keypair.fromSecretKey(secret)
+            : (() => { throw new Error(`Invalid secret key size: ${secret.length}. Expected 32 or 64 bytes`); })();
     try {
         logger_1.logger.info('Starting auto donation...');
-        // 获取目标钱包信息
+        // 获取目标钱包信息 (不再是发送方，但需要其地址)
         const targetWallet = await prisma_1.prisma.wallet.findFirst({
             where: { type: 'target' }
         });
@@ -40,7 +55,7 @@ async function executeAutoDonation() {
         if (!donationWallet) {
             throw new Error('Donation wallet not found in database');
         }
-        // 获取国库钱包的 SOL 余额
+        // 获取国库钱包
         const treasuryWallet = await prisma_1.prisma.wallet.findFirst({
             where: { type: 'treasury' }
         });
@@ -50,8 +65,8 @@ async function executeAutoDonation() {
         const treasuryPubkey = new web3_js_1.PublicKey(treasuryWallet.address);
         const balance = await connection.getBalance(treasuryPubkey);
         const solBalance = balance / web3_js_1.LAMPORTS_PER_SOL;
-        // 使用固定的捐赠金额（0.1 SOL）
-        const donationAmount = 0.1; // 0.1 SOL
+        // 使用固定的捐赠金额（0.01 SOL）
+        const donationAmount = 0.01; // 0.01 SOL
         if (solBalance < donationAmount + 0.01) { // 保留 0.01 SOL 作为手续费
             logger_1.logger.warn(`Insufficient SOL balance in treasury for donation. Required: ${donationAmount + 0.01}, Available: ${solBalance}`);
             return { success: false, error: 'Insufficient treasury balance' };
@@ -107,19 +122,22 @@ async function executeAutoDonation() {
         await prisma_1.prisma.metric.upsert({
             where: { id: '1' },
             update: {
+                cumulativeDonations: {
+                    increment: usdValue,
+                },
                 lastDonationTimestamp: new Date(),
-                cumulativeDonations: { increment: usdValue }
             },
             create: {
+                id: '1',
+                cumulativeDonations: usdValue,
                 lastDonationTimestamp: new Date(),
-                cumulativeDonations: usdValue
-            }
+            },
         });
         return {
             success: true,
             txSignature: signature,
             amount: donationAmount,
-            usdValue
+            usdValue: usdValue
         };
     }
     catch (error) {
@@ -133,10 +151,7 @@ async function executeAutoDonation() {
                 details: JSON.stringify({ error: error.message })
             }
         });
-        return {
-            success: false,
-            error: error.message
-        };
+        return { success: false, error: error.message };
     }
 }
 async function executeAutoDonationWithRetry() {
@@ -149,11 +164,4 @@ async function executeAutoDonationWithRetry() {
             logger_1.logger.warn(`Auto donation attempt ${error.attemptNumber} failed:`, error.message);
         }
     });
-}
-// 检查是否已经处理过某个交易（防重复）
-async function isTransactionProcessed(txSig) {
-    const existing = await prisma_1.prisma.txRecord.findFirst({
-        where: { txSig }
-    });
-    return !!existing;
 }

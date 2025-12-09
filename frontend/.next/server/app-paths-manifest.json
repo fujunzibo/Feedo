@@ -1,4 +1,8 @@
 {
-  "/swap/page": "app/swap/page.js",
-  "/page": "app/page.js"
+  "/_not-found": "app/_not-found.js",
+  "/page": "app/page.js",
+  "/simple-test/page": "app/simple-test/page.js",
+  "/test-assets/page": "app/test-assets/page.js",
+  "/exchange/page": "app/exchange/page.js",
+  "/swap/page": "app/swap/page.js"
 }

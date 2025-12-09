@@ -8,12 +8,12 @@ exports.executeMonthlyTransferWithRetry = executeMonthlyTransferWithRetry;
 const web3_js_1 = require("@solana/web3.js");
 const spl_token_1 = require("@solana/spl-token");
 const clients_1 = require("../solana/clients");
-const config_1 = require("../config");
-const bs58_1 = __importDefault(require("bs58"));
 const prisma_1 = require("../lib/prisma");
 const logger_1 = require("../lib/logger");
+const config_1 = require("../config");
 const p_retry_1 = __importDefault(require("p-retry"));
 const crypto_1 = require("crypto");
+const bs58_1 = __importDefault(require("bs58"));
 async function executeMonthlyTransfer() {
     const connection = (0, clients_1.getConnection)();
     const signer = (0, clients_1.getSigner)();
@@ -21,8 +21,25 @@ async function executeMonthlyTransfer() {
     if (!config_1.appEnv.localPrivateKey) {
         throw new Error('LOCAL_PRIVATE_KEY not set');
     }
-    const secret = bs58_1.default.decode(config_1.appEnv.localPrivateKey);
-    const keypair = web3_js_1.Keypair.fromSecretKey(secret);
+    let secret;
+    try {
+        secret = bs58_1.default.decode(config_1.appEnv.localPrivateKey);
+    }
+    catch (e) {
+        // 非 base58，尝试 hex（128 字符）
+        if (config_1.appEnv.localPrivateKey.length === 128) {
+            const hex = config_1.appEnv.localPrivateKey;
+            secret = new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+        }
+        else {
+            throw new Error(`Invalid private key format. Expected base58 or 128-char hex, got ${config_1.appEnv.localPrivateKey.length} chars`);
+        }
+    }
+    const keypair = secret.length === 32
+        ? web3_js_1.Keypair.fromSeed(secret)
+        : secret.length === 64
+            ? web3_js_1.Keypair.fromSecretKey(secret)
+            : (() => { throw new Error(`Invalid secret key size: ${secret.length}. Expected 32 or 64 bytes`); })();
     try {
         logger_1.logger.info('Starting monthly 1% transfer...');
         // 获取金库钱包信息
@@ -42,6 +59,9 @@ async function executeMonthlyTransfer() {
         // Devnet mint address
         const mintAddress = '5n8sDdBMjsLwtLRVpcFrhFcGa4cXdaUiWKKwNyos8fFK';
         // 获取金库钱包的代币余额
+        logger_1.logger.info(`Treasury wallet address: ${treasuryWallet.address}`);
+        logger_1.logger.info(`Target wallet address: ${targetWallet.address}`);
+        logger_1.logger.info(`Mint address: ${mintAddress}`);
         const treasuryPubkey = new web3_js_1.PublicKey(treasuryWallet.address);
         const treasuryTokenAccount = await (0, spl_token_1.getAssociatedTokenAddress)(new web3_js_1.PublicKey(mintAddress), treasuryPubkey);
         let accountInfo;
