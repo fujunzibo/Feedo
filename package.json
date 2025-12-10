@@ -8,7 +8,7 @@
     "dev:backend": "npm run start --prefix backend",
     "dev:proxy": "npm run start:proxy",
     "dev": "concurrently \"npm run dev:proxy\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-  "build:all": "(cd frontend && npm install && npm run build) && (cd backend && npm run build)",
+  "build:all": "(cd frontend && npm install && npm run build) && (cd backend && npm install && npm run build)",
     "start:prod": "concurrently \"npm run dev:proxy\" \"npm run dev:backend\"",
     "deploy": "npm run build:all && npx wrangler deploy"
   },
