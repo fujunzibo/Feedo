@@ -1,0 +1,3 @@
+name = "feedo"
+main = "dist/index.js" # 假设您的 Worker 代码最终编译到了 dist/index.js
+compatibility_date = "2025-12-10"
