@@ -9,7 +9,8 @@
     "dev:proxy": "npm run start:proxy",
     "dev": "concurrently \"npm run dev:proxy\" \"npm run dev:backend\" \"npm run dev:frontend\"",
    "build:all": "npx --cwd frontend npm run build && npx --cwd backend npm run build",
-    "start:prod": "concurrently \"npm run dev:proxy\" \"npm run dev:backend\""
+    "start:prod": "concurrently \"npm run dev:proxy\" \"npm run dev:backend\"",
+    "deploy": "npm run build --prefix backend && npx wrangler deploy"
   },
   "keywords": [],
   "author": "",
