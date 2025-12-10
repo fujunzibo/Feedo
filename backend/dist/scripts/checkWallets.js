@@ -6,7 +6,7 @@ async function checkWallets() {
     try {
         const wallets = await prisma.wallet.findMany();
         console.log('Current wallets:');
-        wallets.forEach(wallet => {
+        wallets.forEach((wallet) => {
             console.log(`- ${wallet.type}: ${wallet.address}`);
         });
         console.log(`Total wallets: ${wallets.length}`);

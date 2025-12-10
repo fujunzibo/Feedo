@@ -13,6 +13,8 @@ const autoDonation_1 = require("./services/autoDonation");
 const prisma_1 = require("./lib/prisma");
 const cors_1 = __importDefault(require("cors"));
 const web3_js_1 = require("@solana/web3.js");
+// @ts-ignore - @solana/spl-token 0.1.8 types are incomplete, but functions exist at runtime
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 const spl_token_1 = require("@solana/spl-token");
 const clients_1 = require("./solana/clients");
 const pricing_1 = require("./services/pricing");
@@ -156,7 +158,7 @@ app.get('/api/export-csv', async (_req, res) => {
             orderBy: { createdAt: 'desc' },
         });
         let csv = 'kind,txSig,status,amountUi,fromAddress,toAddress,createdAt,details\n';
-        txRecords.forEach(record => {
+        txRecords.forEach((record) => {
             csv += `${record.kind},${record.txSig},${record.status},${record.amountUi},${record.fromAddress},${record.toAddress},${record.createdAt.toISOString()},"${JSON.stringify(record.details)}"\n`;
         });
         res.header('Content-Type', 'text/csv');

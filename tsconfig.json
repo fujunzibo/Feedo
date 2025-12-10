@@ -1,10 +1,8 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
+  // Root tsconfig for Monorepo - serves as base configuration
+  // Individual packages (backend, frontend, shared) have their own tsconfig.json
   "compilerOptions": {
-    // File Layout
-    "rootDir": "src",
-    "outDir": "dist",
-
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "commonjs",
@@ -42,15 +40,17 @@
     "skipLibCheck": true,
 
     "esModuleInterop": true,
-    "resolveJsonModule": true,
-  }
-  ,
+    "resolveJsonModule": true
+  },
+  // This is a base configuration for the Monorepo
+  // Each sub-project (backend, frontend, shared) has its own tsconfig.json
+  "include": ["_tsconfig.d.ts"],
   "exclude": [
-    "backend",
-    "frontend",
-    "shared",
     "node_modules",
     "**/node_modules/**",
-    "**/dist/**"
+    "**/dist/**",
+    "backend",
+    "frontend",
+    "shared"
   ]
 }

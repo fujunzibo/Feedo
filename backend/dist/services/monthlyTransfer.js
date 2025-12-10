@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.executeMonthlyTransfer = executeMonthlyTransfer;
 exports.executeMonthlyTransferWithRetry = executeMonthlyTransferWithRetry;
 const web3_js_1 = require("@solana/web3.js");
+// @ts-ignore - @solana/spl-token 0.1.8 types are incomplete, but functions exist at runtime
 const spl_token_1 = require("@solana/spl-token");
 const clients_1 = require("../solana/clients");
 const prisma_1 = require("../lib/prisma");

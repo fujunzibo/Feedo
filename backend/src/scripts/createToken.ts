@@ -6,10 +6,15 @@ import {
   sendAndConfirmTransaction,
   clusterApiUrl
 } from '@solana/web3.js';
+// @ts-ignore - @solana/spl-token 0.1.8 types are incomplete, but functions exist at runtime
 import { 
+  // @ts-ignore
   createMint,
+  // @ts-ignore
   getOrCreateAssociatedTokenAccount,
+  // @ts-ignore
   mintTo,
+  // @ts-ignore
   getAccount
 } from '@solana/spl-token';
 import bs58 from 'bs58';

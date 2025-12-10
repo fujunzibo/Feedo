@@ -6,7 +6,7 @@ async function checkRecords() {
   try {
     const records = await prisma.txRecord.findMany();
     console.log('Current records:');
-    records.forEach(record => {
+    records.forEach((record: Awaited<ReturnType<typeof prisma.txRecord.findMany>>[0]) => {
       console.log(`- ${record.kind}: ${record.txSig} (${record.status})`);
     });
     console.log(`Total records: ${records.length}`);

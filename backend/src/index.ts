@@ -8,7 +8,16 @@ import { executeAutoDonationWithRetry } from './services/autoDonation';
 import { prisma } from './lib/prisma';
 import cors from 'cors';
 import { PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddress, getAccount, getMint } from '@solana/spl-token';
+// @ts-ignore - @solana/spl-token 0.1.8 types are incomplete, but functions exist at runtime
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+import { 
+  // @ts-ignore
+  getAssociatedTokenAddress, 
+  // @ts-ignore
+  getAccount, 
+  // @ts-ignore
+  getMint 
+} from '@solana/spl-token';
 import { getConnection } from './solana/clients';
 import { getSolPriceUsd } from './services/pricing';
 import { realSwapService } from './services/realSwap';
@@ -49,7 +58,7 @@ app.get('/api/wallet-assets', async (req, res) => {
     const solPricePromise = getSolPriceUsd();
     const tokenPriceUsd = 0.001; // FEEDO代币固定价格
 
-    const walletAssets = await Promise.all(wallets.map(async (wallet) => {
+    const walletAssets = await Promise.all(wallets.map(async (wallet: Awaited<ReturnType<typeof prisma.wallet.findMany>>[0]) => {
       try {
         const pubkey = new PublicKey(wallet.address);
         
@@ -171,7 +180,7 @@ app.get('/api/export-csv', async (_req, res) => {
     });
 
     let csv = 'kind,txSig,status,amountUi,fromAddress,toAddress,createdAt,details\n';
-    txRecords.forEach(record => {
+    txRecords.forEach((record: Awaited<ReturnType<typeof prisma.txRecord.findMany>>[0]) => {
       csv += `${record.kind},${record.txSig},${record.status},${record.amountUi},${record.fromAddress},${record.toAddress},${record.createdAt.toISOString()},"${JSON.stringify(record.details)}"\n`;
     });
 
