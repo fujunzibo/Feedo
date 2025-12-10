@@ -1,0 +1,18 @@
+{
+  "buildCommand": "cd frontend && npm install && npx prisma generate && npm run build",
+  "outputDirectory": "frontend/.next",
+  "framework": "nextjs",
+  "installCommand": "cd frontend && npm install",
+  "devCommand": "cd frontend && npm run dev",
+  "crons": [
+    {
+      "path": "/api/cron/monthly-transfer",
+      "schedule": "0 0 1 * *"
+    },
+    {
+      "path": "/api/cron/threshold-swap",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+
