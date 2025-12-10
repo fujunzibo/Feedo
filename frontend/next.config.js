@@ -1,20 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 基本配置
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' http://localhost:3001 http://localhost:4000;"
-          }
-        ]
-      }
-    ]
+  // 告诉 Next.js 哪里是依赖的根目录
+  experimental: {
+    // 强制 Next.js/Turbopack 从项目的根目录开始解析依赖
+    turbopack: {
+      root: '../', // 从 frontend 目录向上退一级，即到 solana 根目录
+    },
+    // 如果您在前端引用了后端项目，还需要transpilePackages
+    // transpilePackages: ['backend'], 
   }
-}
+};
 
-module.exports = nextConfig
-
+module.exports = nextConfig;
