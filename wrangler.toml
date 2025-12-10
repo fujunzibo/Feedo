@@ -1,3 +1,4 @@
 name = "feedo"
 main = "./backend/dist/index.js" # 假设您的 Worker 代码最终编译到了 dist/index.js
 compatibility_date = "2025-12-10"
+compatibility_flags = ["nodejs_compat"]
